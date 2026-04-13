@@ -3,6 +3,8 @@ package com.checkmate.server.domain.memo.service;
 import com.checkmate.server.domain.memo.dto.MemoCreateRequest;
 import com.checkmate.server.domain.memo.dto.MemoDetailResponse;
 import com.checkmate.server.domain.memo.entity.Memo;
+import com.checkmate.server.domain.memo.entity.MemoItem;
+import com.checkmate.server.domain.memo.repository.MemoItemRepository;
 import com.checkmate.server.domain.memo.repository.MemoRepository;
 import com.checkmate.server.global.constant.ErrorCode;
 import com.checkmate.server.global.exception.BusinessException;
@@ -20,6 +22,7 @@ import java.security.NoSuchAlgorithmException;
 public class MemoService {
 
     private final MemoRepository memoRepository;
+    private final MemoItemRepository memoItemRepository;
 
     @Transactional
     public String createMemo(MemoCreateRequest request) {
@@ -83,5 +86,41 @@ public class MemoService {
             builder.append(String.format("%02x", b));
         }
         return builder.toString();
+    }
+
+    @Transactional
+    public MemoDetailResponse.MemoItemResponse addItem(String shareKey, String content) {
+        Memo memo = memoRepository.findByShareKey(shareKey)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMO_NOT_FOUND));
+
+        MemoItem item = MemoItem.builder()
+                .content(content)
+                .isCompleted(false)
+                .memo(memo)
+                .build();
+
+        memo.addItem(item); // 연관관계 편의 메소드 활용
+        memoItemRepository.save(item);
+
+        return MemoDetailResponse.MemoItemResponse.from(item); // 응답용 DTO로 변환
+    }
+
+    @Transactional
+    public void toggleItemStatus(Long itemId) {
+        MemoItem item = memoItemRepository.findById(itemId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ITEM_NOT_FOUND));
+        item.toggleCompleted(); // 엔티티에 비즈니스 로직 추가 권장
+    }
+
+    @Transactional
+    public void updateItemContent(Long itemId, String content) {
+        MemoItem item = memoItemRepository.findById(itemId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ITEM_NOT_FOUND));
+        item.updateContent(content);
+    }
+
+    @Transactional
+    public void deleteItem(Long itemId) {
+        memoItemRepository.deleteById(itemId);
     }
 }

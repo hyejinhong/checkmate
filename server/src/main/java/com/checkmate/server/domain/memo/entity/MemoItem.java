@@ -25,10 +25,18 @@ public class MemoItem extends BaseEntity {
     private int priority; // 순서 보장용
 
     @Builder
-    public MemoItem(Memo memo, String content, int priority) {
+    public MemoItem(Memo memo, String content, int priority, boolean isCompleted) {
         this.memo = memo;
         this.content = content;
-        this.isCompleted = false;
+        this.isCompleted = isCompleted;
         this.priority = priority;
+    }
+
+    public void toggleCompleted() {
+        this.isCompleted = !this.isCompleted;
+    }
+
+    public void updateContent(String content) {
+        this.content = content;
     }
 }

@@ -13,6 +13,7 @@ public enum ErrorCode {
     // Memo Domain
     MEMO_NOT_FOUND(HttpStatus.NOT_FOUND, "M001", "해당 메모를 찾을 수 없습니다."),
     INVALID_PIN(HttpStatus.UNAUTHORIZED, "M002", "PIN 번호가 일치하지 않습니다."),
+    ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "M003", "항목을 찾을 수 없습니다."),
 
     // Global
     INVALID_INPUT_VALUE(HttpStatus.BAD_REQUEST, "G001", "잘못된 입력값입니다."),

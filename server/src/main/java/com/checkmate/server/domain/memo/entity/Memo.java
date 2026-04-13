@@ -37,4 +37,8 @@ public class Memo extends BaseEntity {
         this.colorCode = colorCode;
         this.pin = pin;
     }
+
+    public void addItem(MemoItem item) {
+        this.items.add(item);
+    }
 }

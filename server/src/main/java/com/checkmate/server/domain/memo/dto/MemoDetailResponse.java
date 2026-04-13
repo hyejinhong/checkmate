@@ -1,6 +1,7 @@
 package com.checkmate.server.domain.memo.dto;
 
 import com.checkmate.server.domain.memo.entity.Memo;
+import com.checkmate.server.domain.memo.entity.MemoItem;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -22,6 +23,16 @@ public class MemoDetailResponse {
         private Long id;
         private String content;
         private boolean isCompleted;
+        private Integer priority;
+
+        public static MemoItemResponse from(MemoItem item) {
+            return MemoItemResponse.builder()
+                    .id(item.getId())
+                    .content(item.getContent())
+                    .isCompleted(item.isCompleted())
+                    .priority(item.getPriority())
+                    .build();
+        }
     }
 
     public static MemoDetailResponse from(Memo memo) {
