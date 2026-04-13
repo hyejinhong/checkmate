@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import PinAuthPage from './PinAuthPage';
+import SockJS from 'sockjs-client';
+import Stomp from 'stompjs';
 
 const MemoBoardPage = () => {
     const { shareKey } = useParams();
@@ -14,6 +16,58 @@ const MemoBoardPage = () => {
     const [newItem, setNewItem] = useState('');
     const [editingItemId, setEditingItemId] = useState(null);
     const [editingContent, setEditingContent] = useState('');
+    const stompClient = useRef(null);
+
+    // WebSocket 연결 설정
+    useEffect(() => {
+        if (isAuthenticated && shareKey) {
+            const socket = new SockJS('http://localhost:8080/ws-checkmate');
+            stompClient.current = Stomp.over(socket);
+            // stompClient.current.debug = null;
+
+            stompClient.current.connect({}, () => {
+                stompClient.current.subscribe(`/topic/memo/${shareKey}`, (message) => {
+                    const payload = JSON.parse(message.body);
+                    const { type, data } = payload;
+
+                    setMemo(prev => {
+                        if (!prev) return prev;
+
+                        switch (type) {
+                            case 'ITEM_ADDED':
+                                return {
+                                    ...prev,
+                                    // 이미 리스트에 해당 ID가 있으면 그대로 두고, 없으면 추가함
+                                    items: prev.items.some(item => item.id === data.id)
+                                        ? prev.items
+                                        : [...prev.items, data]
+                                };
+                            case 'ITEM_UPDATED':
+                            case 'ITEM_TOGGLED':
+                                return {
+                                    ...prev,
+                                    items: prev.items.map(item => item.id === data.id ? data : item)
+                                };
+                            case 'ITEM_DELETED':
+                                return {
+                                    ...prev,
+                                    items: prev.items.filter(item => item.id !== data) // data is itemId
+                                };
+                            default:
+                                return prev;
+                        }
+                    });
+                });
+            });
+        }
+
+        return () => {
+            if (stompClient.current) {
+                stompClient.current.disconnect();
+            }
+        };
+    }, [isAuthenticated, shareKey]);
+
 
     // 1. 초기 인증 상태 확인
     useEffect(() => {
@@ -90,10 +144,10 @@ const MemoBoardPage = () => {
             if (response.data.success) {
                 // 2. 서버에서 받은 실제 데이터를 리스트에 추가
                 const addedItem = response.data.data;
-                setMemo(prev => ({
-                    ...prev,
-                    items: [...(prev.items || []), addedItem]
-                }));
+                // setMemo(prev => ({
+                //     ...prev,
+                //     items: [...(prev.items || []), addedItem]
+                // }));
 
                 // 3. 입력창 비우기
                 setNewItem('');
@@ -148,7 +202,7 @@ const MemoBoardPage = () => {
             const response = await axios.put(`http://localhost:8080/api/memos/${shareKey}/items/${itemId}`, {
                 content: editingContent
             });
-            
+
             if (response.data.success) {
                 setMemo(prev => ({
                     ...prev,
@@ -255,11 +309,10 @@ const MemoBoardPage = () => {
                                             onKeyPress={(e) => e.key === 'Enter' && handleUpdateItem(item.id)}
                                         />
                                     ) : (
-                                        <span 
+                                        <span
                                             onClick={() => handleStartEdit(item)}
-                                            className={`text-xl md:text-2xl flex-grow font-medium transition-all cursor-text ${
-                                                item.isCompleted ? 'line-through text-slate-400 decoration-slate-400 decoration-2' : 'text-slate-800'
-                                            }`}
+                                            className={`text-xl md:text-2xl flex-grow font-medium transition-all cursor-text ${item.isCompleted ? 'line-through text-slate-400 decoration-slate-400 decoration-2' : 'text-slate-800'
+                                                }`}
                                         >
                                             {item.content}
                                         </span>

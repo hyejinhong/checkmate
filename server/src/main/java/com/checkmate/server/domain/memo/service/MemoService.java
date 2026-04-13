@@ -2,6 +2,7 @@ package com.checkmate.server.domain.memo.service;
 
 import com.checkmate.server.domain.memo.dto.MemoCreateRequest;
 import com.checkmate.server.domain.memo.dto.MemoDetailResponse;
+import com.checkmate.server.domain.memo.dto.MemoWebSocketMessage;
 import com.checkmate.server.domain.memo.entity.Memo;
 import com.checkmate.server.domain.memo.entity.MemoItem;
 import com.checkmate.server.domain.memo.repository.MemoItemRepository;
@@ -9,6 +10,7 @@ import com.checkmate.server.domain.memo.repository.MemoRepository;
 import com.checkmate.server.global.constant.ErrorCode;
 import com.checkmate.server.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +25,7 @@ public class MemoService {
 
     private final MemoRepository memoRepository;
     private final MemoItemRepository memoItemRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @Transactional
     public String createMemo(MemoCreateRequest request) {
@@ -102,7 +105,13 @@ public class MemoService {
         memo.addItem(item); // 연관관계 편의 메소드 활용
         memoItemRepository.save(item);
 
-        return MemoDetailResponse.MemoItemResponse.from(item); // 응답용 DTO로 변환
+        MemoDetailResponse.MemoItemResponse response = MemoDetailResponse.MemoItemResponse.from(item);
+
+        // 소켓 구독자들에게 발행 알림
+        messagingTemplate.convertAndSend("/topic/memo/" + shareKey,
+                MemoWebSocketMessage.of("ITEM_ADDED", response));
+
+        return  response;
     }
 
     @Transactional
