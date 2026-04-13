@@ -1,16 +1,17 @@
 package com.checkmate.server.domain.memo.controller;
 
 import com.checkmate.server.domain.memo.dto.MemoCreateRequest;
+import com.checkmate.server.domain.memo.dto.MemoDetailResponse;
+import com.checkmate.server.domain.memo.dto.PinVerifyRequest;
 import com.checkmate.server.domain.memo.service.MemoService;
+import com.checkmate.server.global.constant.ErrorCode;
 import com.checkmate.server.global.dto.ApiResponse;
+import com.checkmate.server.global.exception.BusinessException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/memos")
@@ -19,6 +20,11 @@ public class MemoController {
 
     private final MemoService memoService;
 
+    @GetMapping("/{shareKey}")
+    public ApiResponse<MemoDetailResponse> getMemo(@PathVariable String shareKey) {
+        return ApiResponse.success(memoService.getMemo(shareKey));
+    }
+
     @PostMapping
     public ResponseEntity<ApiResponse<String>> createMemo(@Valid @RequestBody MemoCreateRequest request) {
         String shareKey = memoService.createMemo(request);
@@ -26,5 +32,17 @@ public class MemoController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(ApiResponse.success(shareKey, "메모장이 성공적으로 생성되었습니다."));
+    }
+
+    @PostMapping("/{shareKey}/verify")
+    public ApiResponse<Boolean> verifyPin(
+            @PathVariable String shareKey,
+            @RequestBody PinVerifyRequest request
+    ) {
+        boolean isValid = memoService.verifyPin(shareKey, request.getPin());
+        if (!isValid) {
+            throw new BusinessException(ErrorCode.INVALID_PIN); // 401 또는 403 에러
+        }
+        return ApiResponse.success(true);
     }
 }

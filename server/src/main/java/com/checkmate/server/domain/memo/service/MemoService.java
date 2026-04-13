@@ -1,8 +1,11 @@
 package com.checkmate.server.domain.memo.service;
 
 import com.checkmate.server.domain.memo.dto.MemoCreateRequest;
+import com.checkmate.server.domain.memo.dto.MemoDetailResponse;
 import com.checkmate.server.domain.memo.entity.Memo;
 import com.checkmate.server.domain.memo.repository.MemoRepository;
+import com.checkmate.server.global.constant.ErrorCode;
+import com.checkmate.server.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +41,24 @@ public class MemoService {
 
         // 3. 프론트가 이동할 URL을 만들 때 쓸 shareKey 반환
         return savedMemo.getShareKey();
+    }
+
+    @Transactional(readOnly = true)
+    public MemoDetailResponse getMemo(String shareKey) {
+        Memo memo = memoRepository.findByShareKey(shareKey)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMO_NOT_FOUND));
+
+        return MemoDetailResponse.from(memo);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean verifyPin(String shareKey, String inputPin) {
+        Memo memo = memoRepository.findByShareKey(shareKey)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMO_NOT_FOUND));
+
+        // 입력받은 PIN을 해시화하여 DB에 저장된 값과 비교
+        String hashedInput = encryptSHA256(inputPin);
+        return memo.getPin().equals(hashedInput);
     }
 
     /**
