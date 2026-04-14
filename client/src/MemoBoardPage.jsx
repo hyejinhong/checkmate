@@ -4,6 +4,7 @@ import axios from 'axios';
 import PinAuthPage from './PinAuthPage';
 import SockJS from 'sockjs-client';
 import Stomp from 'stompjs';
+import { getMyProfile } from './utils/presence';
 
 const MemoBoardPage = () => {
     const { shareKey } = useParams();
@@ -17,15 +18,26 @@ const MemoBoardPage = () => {
     const [editingItemId, setEditingItemId] = useState(null);
     const [editingContent, setEditingContent] = useState('');
     const stompClient = useRef(null);
+    const [activeUsers, setActiveUsers] = useState([]);
 
     // WebSocket 연결 설정
     useEffect(() => {
+        let heartbeatInterval;
+
         if (isAuthenticated && shareKey) {
             const socket = new SockJS('http://localhost:8080/ws-checkmate');
             stompClient.current = Stomp.over(socket);
             // stompClient.current.debug = null;
 
-            stompClient.current.connect({}, () => {
+            const myProfile = getMyProfile();
+            const connectHeaders = {
+                shareKey: shareKey,
+                viewerId: myProfile.viewerId,
+                nickname: myProfile.nickname,
+                emoji: myProfile.emoji,
+                color: myProfile.color
+            };
+            stompClient.current.connect(connectHeaders, () => {
                 stompClient.current.subscribe(`/topic/memo/${shareKey}`, (message) => {
                     const payload = JSON.parse(message.body);
                     const { type, data } = payload;
@@ -62,10 +74,36 @@ const MemoBoardPage = () => {
                         }
                     });
                 });
+                // 접속자 명단(Presence) 구독
+                stompClient.current.subscribe(`/topic/memo/${shareKey}/presence`, (message) => {
+                    const users = JSON.parse(message.body);
+                    setActiveUsers(users); // 서버에서 온 과일 리스트로 업데이트
+                });
+
+                // 구독 완료 후 바로 현재 목록 요청
+                stompClient.current.send(
+                    `/pub/memo/${shareKey}/presence/join`,
+                    {},
+                    ""
+                );
+
+                // 하트비트 전송 (15초마다)
+                heartbeatInterval = setInterval(() => {
+                    if (stompClient.current && stompClient.current.connected) {
+                        stompClient.current.send(
+                            `/pub/memo/${shareKey}/presence/heartbeat`,
+                            {},
+                            JSON.stringify({ viewerId: myProfile.viewerId })
+                        );
+                    }
+                }, 15000);
+
             });
         }
 
         return () => {
+            // 클린업: 연결 해제 및 타이머 제거
+            if (heartbeatInterval) clearInterval(heartbeatInterval);
             if (stompClient.current) {
                 stompClient.current.disconnect();
             }
@@ -279,10 +317,17 @@ const MemoBoardPage = () => {
                         >
                             {memo?.title}
                         </h1>
-                        <div className="flex -space-x-3 overflow-hidden ml-auto">
-                            <div className="flex items-center justify-center h-10 w-10 rounded-full bg-emerald-100 ring-4 ring-white/50 text-emerald-800 text-xs font-bold shadow-sm">
-                                ME
-                            </div>
+                        <div className="flex -space-x-2 overflow-hidden ml-auto">
+                            {activeUsers.map((user) => (
+                                <div
+                                    key={user.userId}
+                                    className="relative flex items-center justify-center h-12 w-12 rounded-full ring-4 ring-white/50 shadow-lg text-2xl transition-transform hover:scale-110 hover:z-10 cursor-default z-0"
+                                    style={{ backgroundColor: user.color }}
+                                    title={user.nickname}
+                                >
+                                    <span className="relative z-20">{user.emoji}</span>
+                                </div>
+                            ))}
                         </div>
                     </div>
 
