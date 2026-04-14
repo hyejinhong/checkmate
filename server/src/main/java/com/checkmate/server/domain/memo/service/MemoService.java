@@ -118,7 +118,11 @@ public class MemoService {
     public void toggleItemStatus(Long itemId) {
         MemoItem item = memoItemRepository.findById(itemId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ITEM_NOT_FOUND));
-        item.toggleCompleted(); // 엔티티에 비즈니스 로직 추가 권장
+        item.toggleCompleted();
+
+        MemoDetailResponse.MemoItemResponse response = MemoDetailResponse.MemoItemResponse.from(item);
+        messagingTemplate.convertAndSend("/topic/memo/" + item.getMemo().getShareKey(),
+                MemoWebSocketMessage.of("ITEM_TOGGLED", response));
     }
 
     @Transactional
@@ -126,10 +130,22 @@ public class MemoService {
         MemoItem item = memoItemRepository.findById(itemId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ITEM_NOT_FOUND));
         item.updateContent(content);
+
+        MemoDetailResponse.MemoItemResponse response = MemoDetailResponse.MemoItemResponse.from(item);
+        messagingTemplate.convertAndSend("/topic/memo/" + item.getMemo().getShareKey(),
+                MemoWebSocketMessage.of("ITEM_UPDATED", response));
     }
 
     @Transactional
     public void deleteItem(Long itemId) {
+        MemoItem item = memoItemRepository.findById(itemId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ITEM_NOT_FOUND));
+        String shareKey = item.getMemo().getShareKey();
+
         memoItemRepository.deleteById(itemId);
+
+        // 삭제된 아이템의 ID를 포함하여 소켓 전송
+        messagingTemplate.convertAndSend("/topic/memo/" + shareKey,
+                MemoWebSocketMessage.of("ITEM_DELETED", itemId));
     }
 }

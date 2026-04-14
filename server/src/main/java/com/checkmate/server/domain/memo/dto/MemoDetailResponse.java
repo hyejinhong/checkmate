@@ -2,6 +2,7 @@ package com.checkmate.server.domain.memo.dto;
 
 import com.checkmate.server.domain.memo.entity.Memo;
 import com.checkmate.server.domain.memo.entity.MemoItem;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -22,6 +23,7 @@ public class MemoDetailResponse {
     public static class MemoItemResponse {
         private Long id;
         private String content;
+        @JsonProperty("isCompleted")
         private boolean isCompleted;
         private Integer priority;
 

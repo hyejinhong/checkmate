@@ -46,7 +46,11 @@ const MemoBoardPage = () => {
                             case 'ITEM_TOGGLED':
                                 return {
                                     ...prev,
-                                    items: prev.items.map(item => item.id === data.id ? data : item)
+                                    items: prev.items.map(item =>
+                                        String(item.id) === String(data.id)
+                                            ? { ...item, ...data }
+                                            : item
+                                    )
                                 };
                             case 'ITEM_DELETED':
                                 return {
@@ -163,12 +167,12 @@ const MemoBoardPage = () => {
         try {
             await axios.patch(`http://localhost:8080/api/memos/${shareKey}/items/${itemId}/toggle`);
             // 로컬 상태 업데이트
-            setMemo(prev => ({
-                ...prev,
-                items: prev.items.map(item =>
-                    item.id === itemId ? { ...item, isCompleted: !item.isCompleted } : item
-                )
-            }));
+            // setMemo(prev => ({
+            //     ...prev,
+            //     items: prev.items.map(item =>
+            //         item.id === itemId ? { ...item, isCompleted: !item.isCompleted } : item
+            //     )
+            // }));
         } catch (err) {
             alert("상태 변경에 실패했습니다.");
         }
