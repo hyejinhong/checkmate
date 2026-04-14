@@ -7,6 +7,16 @@ const FRUITS = [
     { name: '복숭아', emoji: '🍑', color: '#FECACA' },
     { name: '수박', emoji: '🍉', color: '#86EFAC' },
     { name: '멜론', emoji: '🍈', color: '#BBF7D0' },
+    { name: '파인애플', emoji: '🍍', color: '#FEF08A' },
+    { name: '체리', emoji: '🍒', color: '#FCA5A5' },
+    { name: '블루베리', emoji: '🫐', color: '#BFDBFE' },
+    { name: '키위', emoji: '🥝', color: '#D9F99D' },
+    { name: '망고', emoji: '🥭', color: '#FDE047' },
+    { name: '레몬', emoji: '🍋', color: '#FFF59D' },
+    { name: '배', emoji: '🍐', color: '#ECFCCB' },
+    { name: '아보카도', emoji: '🥑', color: '#D1FAE5' },
+    { name: '코코넛', emoji: '🥥', color: '#F3F4F6' },
+    { name: '감', emoji: '🍊', color: '#FFEDD5' },
 ];
 
 export const getMyProfile = () => {
