@@ -4,6 +4,7 @@ import axios from 'axios';
 import PinAuthPage from './PinAuthPage';
 import SockJS from 'sockjs-client';
 import Stomp from 'stompjs';
+import ShareModal from './components/ShareModal';
 import { getMyProfile } from './utils/presence';
 
 const MemoBoardPage = () => {
@@ -18,6 +19,7 @@ const MemoBoardPage = () => {
     const [editingItemId, setEditingItemId] = useState(null);
     const [editingContent, setEditingContent] = useState('');
     const stompClient = useRef(null);
+    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
     const [activeUsers, setActiveUsers] = useState([]);
 
     const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || `https://hhjcloud.duckdns.org/ws-checkmate`;
@@ -319,7 +321,15 @@ const MemoBoardPage = () => {
                         >
                             {memo?.title}
                         </h1>
-                        <div className="flex -space-x-2 overflow-hidden ml-auto">
+                        <div className="flex items-center gap-4 ml-auto">
+                            <button 
+                                onClick={() => setIsShareModalOpen(true)}
+                                className="flex items-center gap-2 px-4 py-2 bg-white/50 hover:bg-white/80 dark:bg-slate-800/50 dark:hover:bg-slate-800/80 rounded-full text-sm font-bold text-emerald-800 dark:text-emerald-400 transition-all shadow-sm border border-white/20"
+                            >
+                                <span className="material-symbols-outlined text-lg">share</span>
+                                공유
+                            </button>
+                            <div className="flex -space-x-2 overflow-hidden">
                             {activeUsers.map((user) => (
                                 <div
                                     key={user.userId}
@@ -330,6 +340,7 @@ const MemoBoardPage = () => {
                                     <span className="relative z-20">{user.emoji}</span>
                                 </div>
                             ))}
+                            </div>
                         </div>
                     </div>
 
@@ -430,6 +441,13 @@ const MemoBoardPage = () => {
                     <span className="text-xs font-semibold">Settings</span>
                 </div>
             </nav>
+
+            {/* Share Modal */}
+            <ShareModal 
+                isOpen={isShareModalOpen} 
+                onClose={() => setIsShareModalOpen(false)} 
+                shareUrl={window.location.href} 
+            />
         </div>
     );
 };
