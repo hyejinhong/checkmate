@@ -410,9 +410,9 @@ const MemoBoardPage = () => {
                     </div>
                     {/* Bottom Input Field */}
                     <div className="relative z-10 mt-auto">
-                        <div className="bg-white/40 backdrop-blur-sm rounded-2xl p-2 flex items-center shadow-inner border border-white/40">
+                        <div className="bg-white/40 backdrop-blur-sm rounded-2xl p-2 flex items-center shadow-inner border border-white/40 overflow-hidden">
                             <input
-                                className="flex-grow bg-transparent border-none focus:ring-0 text-lg px-4 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 font-medium"
+                                className="flex-grow min-w-0 bg-transparent border-none focus:ring-0 text-lg px-4 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 font-medium"
                                 placeholder="여기에 할 일을 추가하세요..."
                                 type="text"
                                 value={newItem}
