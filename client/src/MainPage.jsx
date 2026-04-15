@@ -177,7 +177,7 @@ const CreateBoardSection = ({ isModal, onClose }) => {
 
     setIsLoading(true);
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/memos`, formData);
+      const response = await axios.post(`/api/memos`, formData);
       
       // ApiResponse 규격에 맞춘 성공 처리 (data에 shareKey가 담겨 옴)
       if (response.data.success) {
