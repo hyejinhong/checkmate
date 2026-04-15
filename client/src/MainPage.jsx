@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 const MainPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [recentMemos, setRecentMemos] = useState([]);
+  const navigate = useNavigate();
 
   const formatTimeAgo = (timestamp) => {
     if (!timestamp) return '알 수 없음';
@@ -100,7 +102,7 @@ const MainPage = () => {
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <div className="absolute inset-0" onClick={() => setIsModalOpen(false)} />
-          <CreateBoardSection isModal onClose={() => setIsModalOpen(false)} />
+          <CreateBoardSection isModal onClose={() => setIsModalOpen(false)} navigate={navigate} />
         </div>
       )}
     </div>
@@ -122,10 +124,12 @@ const Header = () => (
   </header>
 );
 
-const MemoCard = ({ shareKey, title, updateText, bgColor, pinColor, onDelete }) => (
+const MemoCard = ({ shareKey, title, updateText, bgColor, pinColor, onDelete }) => {
+  const navigate = useNavigate();
+  return (
   <div
     style={{ backgroundColor: bgColor }}
-    onClick={() => window.location.href = `/memo/${shareKey}`}
+    onClick={() => navigate(`/memo/${shareKey}`)}
     className="group relative rounded-xl p-8 pt-12 shadow-[0_20px_40px_-12px_rgba(0,105,71,0.1)] transition-all hover:-translate-y-2 hover:shadow-[0_30px_50px_-15px_rgba(0,105,71,0.15)] cursor-pointer"
   >
     <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2">
@@ -149,9 +153,10 @@ const MemoCard = ({ shareKey, title, updateText, bgColor, pinColor, onDelete }) 
       </div>
     </div>
   </div>
-);
+  );
+};
 
-const CreateBoardSection = ({ isModal, onClose }) => {
+const CreateBoardSection = ({ isModal, onClose, navigate }) => {
   // 1. 입력값 상태 관리
   const [formData, setFormData] = useState({
     title: '',
@@ -202,7 +207,7 @@ const CreateBoardSection = ({ isModal, onClose }) => {
         const updatedMemos = [newMemo, ...savedMemos.filter(m => m.shareKey !== shareKey)].slice(0, 6);
         localStorage.setItem('recentMemos', JSON.stringify(updatedMemos));
         
-        window.location.href = `/memo/${shareKey}`; 
+        navigate(`/memo/${shareKey}`); 
         
         if (isModal) onClose();
       }
