@@ -159,6 +159,8 @@ const CreateBoardSection = ({ isModal, onClose }) => {
     colorCode: '#79E5CB' // 기본 컬러값
   });
   const [isLoading, setIsLoading] = useState(false);
+  
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
   // 2. 입력값 변경 핸들러
   const handleChange = (e) => {
@@ -175,7 +177,7 @@ const CreateBoardSection = ({ isModal, onClose }) => {
 
     setIsLoading(true);
     try {
-      const response = await axios.post('http://localhost:8083/api/memos', formData);
+      const response = await axios.post(`${API_BASE_URL}/api/memos`, formData);
       
       // ApiResponse 규격에 맞춘 성공 처리 (data에 shareKey가 담겨 옴)
       if (response.data.success) {
