@@ -20,14 +20,14 @@ const MemoBoardPage = () => {
     const stompClient = useRef(null);
     const [activeUsers, setActiveUsers] = useState([]);
 
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8083';
+    const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || `https://hhjcloud.duckdns.org/ws-checkmate`;
 
     // WebSocket 연결 설정
     useEffect(() => {
         let heartbeatInterval;
 
         if (isAuthenticated && shareKey) {
-            const socket = new SockJS(`${API_BASE_URL}/ws-checkmate`);
+            const socket = new SockJS(`${SOCKET_URL}/ws-checkmate`);
             stompClient.current = Stomp.over(socket);
             // stompClient.current.debug = null;
 
