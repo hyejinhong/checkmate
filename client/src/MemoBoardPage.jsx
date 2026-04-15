@@ -25,7 +25,7 @@ const MemoBoardPage = () => {
         let heartbeatInterval;
 
         if (isAuthenticated && shareKey) {
-            const socket = new SockJS('http://localhost:8080/ws-checkmate');
+            const socket = new SockJS('http://localhost:8083/ws-checkmate');
             stompClient.current = Stomp.over(socket);
             // stompClient.current.debug = null;
 
@@ -127,7 +127,7 @@ const MemoBoardPage = () => {
     const fetchMemo = async () => {
         setLoading(true);
         try {
-            const response = await axios.get(`http://localhost:8080/api/memos/${shareKey}`);
+            const response = await axios.get(`http://localhost:8083/api/memos/${shareKey}`);
             if (response.data.success) {
                 setMemo(response.data.data);
                 setIsAuthenticated(true);
@@ -147,7 +147,7 @@ const MemoBoardPage = () => {
     const handleVerifyPin = async (inputPin) => {
         setAuthError(false);
         try {
-            const response = await axios.post(`http://localhost:8080/api/memos/${shareKey}/verify`, { pin: inputPin });
+            const response = await axios.post(`http://localhost:8083/api/memos/${shareKey}/verify`, { pin: inputPin });
             if (response.data.success) {
                 localStorage.setItem(`auth_${shareKey}`, 'true');
                 setIsAuthenticated(true);
@@ -179,7 +179,7 @@ const MemoBoardPage = () => {
 
         try {
             // 1. 백엔드 API 호출
-            const response = await axios.post(`http://localhost:8080/api/memos/${shareKey}/items`, {
+            const response = await axios.post(`http://localhost:8083/api/memos/${shareKey}/items`, {
                 content: newItem
             });
 
@@ -203,7 +203,7 @@ const MemoBoardPage = () => {
     // 1. 상태 토글 핸들러
     const handleToggleItem = async (itemId) => {
         try {
-            await axios.patch(`http://localhost:8080/api/memos/${shareKey}/items/${itemId}/toggle`);
+            await axios.patch(`http://localhost:8083/api/memos/${shareKey}/items/${itemId}/toggle`);
             // 로컬 상태 업데이트
             // setMemo(prev => ({
             //     ...prev,
@@ -220,7 +220,7 @@ const MemoBoardPage = () => {
     const handleDeleteItem = async (itemId) => {
         if (!window.confirm("정말 삭제하시겠습니까?")) return;
         try {
-            await axios.delete(`http://localhost:8080/api/memos/${shareKey}/items/${itemId}`);
+            await axios.delete(`http://localhost:8083/api/memos/${shareKey}/items/${itemId}`);
             // 로컬 상태에서 제거
             setMemo(prev => ({
                 ...prev,
@@ -241,7 +241,7 @@ const MemoBoardPage = () => {
     const handleUpdateItem = async (itemId) => {
         if (!editingContent.trim()) return;
         try {
-            const response = await axios.put(`http://localhost:8080/api/memos/${shareKey}/items/${itemId}`, {
+            const response = await axios.put(`http://localhost:8083/api/memos/${shareKey}/items/${itemId}`, {
                 content: editingContent
             });
 

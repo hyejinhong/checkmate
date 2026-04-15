@@ -25,6 +25,15 @@ const MainPage = () => {
     setRecentMemos(savedMemos.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
   }, []);
 
+  const handleDeleteMemo = (e, shareKey) => {
+    e.stopPropagation(); // 카드 클릭 이벤트(이동) 방지
+    if (!window.confirm("이 메모장을 목록에서 삭제하시겠습니까?\n(실제 데이터는 삭제되지 않으며, 다시 PIN을 입력하여 추가할 수 있습니다.)")) return;
+    const savedMemos = JSON.parse(localStorage.getItem('recentMemos') || '[]');
+    const updatedMemos = savedMemos.filter(m => m.shareKey !== shareKey);
+    localStorage.setItem('recentMemos', JSON.stringify(updatedMemos));
+    setRecentMemos(updatedMemos);
+  };
+
   return (
 <div className="min-h-screen bg-[#f5f7f9] dark:bg-slate-950 text-[#2c2f31] dark:text-slate-200 font-body transition-colors">
       <Header />
@@ -63,10 +72,12 @@ const MainPage = () => {
               {recentMemos.map((memo, index) => (
                 <MemoCard 
                   key={index} 
+                  shareKey={memo.shareKey}
                   title={memo.title} 
                   updateText={formatTimeAgo(memo.createdAt)} 
                   bgColor={memo.bgColor} 
                   pinColor={memo.pinColor} 
+                  onDelete={(e) => handleDeleteMemo(e, memo.shareKey)}
                 />
               ))}
             </div>
@@ -111,14 +122,21 @@ const Header = () => (
   </header>
 );
 
-const MemoCard = ({ title, updateText, bgColor, pinColor }) => (
+const MemoCard = ({ shareKey, title, updateText, bgColor, pinColor, onDelete }) => (
   <div
     style={{ backgroundColor: bgColor }}
-    className="group relative rounded-xl p-8 pt-12 shadow-[0_20px_40px_-12px_rgba(0,105,71,0.1)] transition-all hover:-translate-y-2 hover:shadow-[0_30px_50px_-15px_rgba(0,105,71,0.15)]"
+    onClick={() => window.location.href = `/memo/${shareKey}`}
+    className="group relative rounded-xl p-8 pt-12 shadow-[0_20px_40px_-12px_rgba(0,105,71,0.1)] transition-all hover:-translate-y-2 hover:shadow-[0_30px_50px_-15px_rgba(0,105,71,0.15)] cursor-pointer"
   >
     <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2">
       <span className={`material-symbols-outlined ${pinColor} text-4xl drop-shadow-md`} style={{ fontVariationSettings: "'FILL' 1" }}>push_pin</span>
     </div>
+    <button 
+      onClick={onDelete}
+      className="absolute top-4 right-4 z-20 w-8 h-8 flex items-center justify-center rounded-full bg-white/80 text-slate-400 hover:text-red-500 hover:bg-white transition-all shadow-sm"
+    >
+      <span className="material-symbols-outlined text-xl">delete</span>
+    </button>
     <div className="flex flex-col h-full justify-between">
       <div>
         <h3 className="font-headline font-bold text-xl text-slate-800 mb-2">{title}</h3>
@@ -157,19 +175,24 @@ const CreateBoardSection = ({ isModal, onClose }) => {
 
     setIsLoading(true);
     try {
-      const response = await axios.post('http://localhost:8080/api/memos', formData);
+      const response = await axios.post('http://localhost:8083/api/memos', formData);
       
       // ApiResponse 규격에 맞춘 성공 처리 (data에 shareKey가 담겨 옴)
       if (response.data.success) {
-        const shareKey = response.data.data;
+        const createdMemo = response.data.data; // 서버에서 생성된 메모 객체 (id, shareKey 등 포함)
+        const shareKey = typeof createdMemo === 'string' ? createdMemo : createdMemo.shareKey;
+        
         alert("메모장이 생성되었습니다!");
+
+        // 생성 직후 바로 인증 상태 저장 (리다이렉트 시 PIN 입력 생략)
+        localStorage.setItem(`auth_${shareKey}`, 'true');
 
         // 로컬 스토리지에 최근 메모 저장
         const newMemo = {
-          title: formData.title,
+          title: formData.title || "제목 없는 메모",
           shareKey: shareKey,
           createdAt: new Date().toISOString(),
-          bgColor: formData.colorCode,
+          bgColor: formData.colorCode || '#E6FFFA',
           pinColor: 'text-emerald-500'
         };
         
