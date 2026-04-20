@@ -5,6 +5,7 @@ import PinAuthPage from './PinAuthPage';
 import SockJS from 'sockjs-client';
 import Stomp from 'stompjs';
 import { getMyProfile } from './utils/presence';
+import ProfileSetupModal from './components/ProfileSetupModal';
 
 const MemoBoardPage = () => {
     const { shareKey } = useParams();
@@ -18,7 +19,11 @@ const MemoBoardPage = () => {
     const [editingItemId, setEditingItemId] = useState(null);
     const [editingContent, setEditingContent] = useState('');
     const stompClient = useRef(null);
+    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+    const inputContainerRef = useRef(null);
     const [activeUsers, setActiveUsers] = useState([]);
+    const [showProfileModal, setShowProfileModal] = useState(false);
+    const [myProfile, setMyProfile] = useState(null);
 
     // WebSocket 연결 설정
     useEffect(() => {
@@ -29,13 +34,13 @@ const MemoBoardPage = () => {
             stompClient.current = Stomp.over(socket);
             // stompClient.current.debug = null;
 
-            const myProfile = getMyProfile();
+            const profile = getMyProfile(shareKey);
             const connectHeaders = {
                 shareKey: shareKey,
-                viewerId: myProfile.viewerId,
-                nickname: myProfile.nickname,
-                emoji: myProfile.emoji,
-                color: myProfile.color
+                viewerId: profile?.viewerId,
+                nickname: profile?.nickname,
+                emoji: profile?.emoji,
+                color: profile?.color
             };
             stompClient.current.connect(connectHeaders, () => {
                 stompClient.current.subscribe(`/topic/memo/${shareKey}`, (message) => {
@@ -93,7 +98,7 @@ const MemoBoardPage = () => {
                         stompClient.current.send(
                             `/pub/memo/${shareKey}/presence/heartbeat`,
                             {},
-                            JSON.stringify({ viewerId: myProfile.viewerId })
+                            JSON.stringify({ viewerId: profile.viewerId })
                         );
                     }
                 }, 15000);
@@ -108,12 +113,20 @@ const MemoBoardPage = () => {
                 stompClient.current.disconnect();
             }
         };
-    }, [isAuthenticated, shareKey]);
+    }, [isAuthenticated, shareKey, myProfile]);
 
 
     // 1. 초기 인증 상태 확인
     useEffect(() => {
         const isAuth = localStorage.getItem(`auth_${shareKey}`) === 'true';
+        
+        const savedUser = JSON.parse(localStorage.getItem(`checkmate_user_profile_${shareKey}`) || 'null');
+        if (!savedUser || !savedUser.isSet) {
+            setShowProfileModal(true);
+        } else {
+            setMyProfile(savedUser);
+        }
+
         if (isAuth) {
             console.log("isAuth", isAuth);
             setIsAuthenticated(true);
@@ -129,8 +142,24 @@ const MemoBoardPage = () => {
         try {
             const response = await axios.get(`http://localhost:8080/api/memos/${shareKey}`);
             if (response.data.success) {
-                setMemo(response.data.data);
+                const memoData = response.data.data;
+                setMemo(memoData);
                 setIsAuthenticated(true);
+
+                // 로컬 스토리지에 최근 메모 정보가 없거나 갱신이 필요한 경우 저장
+                const savedMemos = JSON.parse(localStorage.getItem('recentMemos') || '[]');
+                const exists = savedMemos.find(m => m.shareKey === shareKey);
+                if (!exists) {
+                    const newMemoEntry = {
+                        title: memoData.title,
+                        shareKey: shareKey,
+                        createdAt: memoData.createdAt || new Date().toISOString(),
+                        bgColor: memoData.colorCode,
+                        pinColor: 'text-emerald-500'
+                    };
+                    const updatedMemos = [newMemoEntry, ...savedMemos].slice(0, 6);
+                    localStorage.setItem('recentMemos', JSON.stringify(updatedMemos));
+                }
             }
         } catch (error) {
             console.error("데이터 로드 실패:", error);
@@ -260,11 +289,21 @@ const MemoBoardPage = () => {
         }
     };
 
+    // 모바일 키보드 대응: 입력창 포커스 시 스크롤 조정
+    const handleInputFocus = () => {
+        setTimeout(() => {
+            inputContainerRef.current?.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'center' 
+            });
+        }, 300); // 키보드가 올라오는 시간을 고려한 지연
+    };
+
     // --- 렌더링 조건 처리 ---
     if (loading && !memo) {
         return (
             <div className="min-h-screen flex items-center justify-center font-headline text-emerald-800 bg-[#f5f7f9]">
-                보드를 가져오는 중... 📌
+                메모를 가져오는 중... 📌
             </div>
         );
     }
@@ -288,8 +327,14 @@ const MemoBoardPage = () => {
                             <span className="cursor-pointer hover:scale-105 transition-all">Tasks</span>
                             <span className="cursor-pointer hover:scale-105 transition-all">Settings</span>
                         </div>
-                        <div className="w-10 h-10 rounded-full border-2 border-[#79E5CB] overflow-hidden bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold">
-                            CM
+                        <div 
+                            className="w-10 h-10 rounded-full border-2 border-[#79E5CB] overflow-hidden flex items-center justify-center text-xl shadow-sm"
+                            style={{ backgroundColor: myProfile?.color || '#79E5CB' }}
+                            title={myProfile?.nickname}
+                        >
+                            {myProfile?.emoji || (
+                                <span className="material-symbols-outlined text-emerald-700 text-base">person</span>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -396,13 +441,14 @@ const MemoBoardPage = () => {
                         )}
                     </div>
                     {/* Bottom Input Field */}
-                    <div className="relative z-10 mt-auto">
-                        <div className="bg-white/40 backdrop-blur-sm rounded-2xl p-2 flex items-center shadow-inner border border-white/40">
+                    <div ref={inputContainerRef} className="relative z-10 mt-auto">
+                        <div className="bg-white/40 backdrop-blur-sm rounded-2xl p-2 flex items-center shadow-inner border border-white/40 overflow-hidden">
                             <input
                                 className="flex-grow bg-transparent border-none focus:ring-0 text-lg px-4 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 font-medium"
                                 placeholder="여기에 할 일을 추가하세요..."
                                 type="text"
                                 value={newItem}
+                                onFocus={handleInputFocus}
                                 onChange={(e) => setNewItem(e.target.value)}
                                 onKeyPress={(e) => e.key === 'Enter' && handleAddItem()}
                             />
@@ -428,6 +474,21 @@ const MemoBoardPage = () => {
                     <span className="text-xs font-semibold">Settings</span>
                 </div>
             </nav>
+
+            {/* Share Modal */}
+            <ShareModal 
+                isOpen={isShareModalOpen} 
+                onClose={() => setIsShareModalOpen(false)} 
+                shareUrl={window.location.href} 
+            />
+
+            {/* Profile Setup Modal */}
+            {showProfileModal && (
+                <ProfileSetupModal onComplete={(userInfo) => {
+                    setMyProfile(userInfo);
+                    setShowProfileModal(false);
+                }} />
+            )}
         </div>
     );
 };

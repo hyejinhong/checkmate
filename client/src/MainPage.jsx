@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import Settings from './components/Settings';
 
 const MainPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [recentMemos, setRecentMemos] = useState([]);
 
   const formatTimeAgo = (timestamp) => {
@@ -25,9 +27,22 @@ const MainPage = () => {
     setRecentMemos(savedMemos.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
   }, []);
 
+  const handleDeleteMemo = (e, shareKey) => {
+    e.stopPropagation(); // 카드 클릭 이벤트(이동) 방지
+    if (!window.confirm("이 메모장을 목록에서 삭제하시겠습니까?\n(실제 데이터는 삭제되지 않으며, 다시 PIN을 입력하여 추가할 수 있습니다.)")) return;
+    const savedMemos = JSON.parse(localStorage.getItem('recentMemos') || '[]');
+    const updatedMemos = savedMemos.filter(m => m.shareKey !== shareKey);
+    localStorage.setItem('recentMemos', JSON.stringify(updatedMemos));
+    setRecentMemos(updatedMemos);
+  };
+
+  if (isSettingsOpen) {
+    return <Settings onBack={() => setIsSettingsOpen(false)} />;
+  }
+
   return (
 <div className="min-h-screen bg-[#f5f7f9] dark:bg-slate-950 text-[#2c2f31] dark:text-slate-200 font-body transition-colors">
-      <Header />
+      <Header onSettingsClick={() => setIsSettingsOpen(true)} />
 
       <main className="pt-24 pb-32 px-6 max-w-7xl mx-auto">
         {/* Hero Section */}
@@ -77,8 +92,8 @@ const MainPage = () => {
         )}
       </main>
 
-      <BottomNav />
-      <DesktopFAB />
+      <BottomNav onSettingsClick={() => setIsSettingsOpen(true)} />
+      <DesktopFAB onAddClick={() => setIsModalOpen(true)} />
 
       {/* Decorative Corner Pins */}
       <div className="hidden lg:block fixed top-24 left-12 opacity-10 rotate-[-15deg] pointer-events-none">
@@ -98,15 +113,18 @@ const MainPage = () => {
 
 // --- Sub Components ---
 
-const Header = () => (
+const Header = ({ onSettingsClick }) => (
   <header className="fixed top-0 w-full z-50 h-16 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800 shadow-sm">
-    <div className="flex items-center justify-center px-6 h-full w-full max-w-7xl mx-auto">
+    <div className="flex items-center justify-between px-6 h-full w-full max-w-7xl mx-auto">
       <div className="flex items-center gap-2">
         <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400" style={{ fontVariationSettings: "'FILL' 1" }}>push_pin</span>
         <h1 className="text-black dark:text-white font-extrabold tracking-tight text-xl font-plus-jakarta-sans">
           Checkmate 📌
         </h1>
       </div>
+      <button onClick={onSettingsClick} className="p-2 text-slate-400 hover:text-emerald-500 transition-colors">
+        <span className="material-symbols-outlined">settings</span>
+      </button>
     </div>
   </header>
 );
@@ -294,7 +312,7 @@ const EmptyCorkboard = () => (
   </section>
 );
 
-const BottomNav = () => (
+const BottomNav = ({ onSettingsClick }) => (
   <nav className="md:hidden fixed bottom-0 w-full z-50 flex justify-around items-center px-8 py-4 bg-white/90 backdrop-blur-2xl rounded-t-xl shadow-[0_-10px_40px_-12px_rgba(0,105,71,0.15)] pb-safe">
     <button className="flex flex-col items-center justify-center bg-emerald-100 text-emerald-800 rounded-full p-4 active:scale-90 transition-all">
       <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>add_circle</span>
@@ -302,15 +320,15 @@ const BottomNav = () => (
     <button className="flex flex-col items-center justify-center text-slate-400 p-4 rounded-full active:scale-90">
       <span className="material-symbols-outlined">history</span>
     </button>
-    <button className="flex flex-col items-center justify-center text-slate-400 p-4 rounded-full active:scale-90">
+    <button onClick={onSettingsClick} className="flex flex-col items-center justify-center text-slate-400 p-4 rounded-full active:scale-90">
       <span className="material-symbols-outlined">settings</span>
     </button>
   </nav>
 );
 
-const DesktopFAB = () => (
+const DesktopFAB = ({ onAddClick }) => (
   <div className="hidden md:flex fixed bottom-8 right-8 z-50">
-    <button className="bg-[#79E5CB] text-white w-16 h-16 rounded-full shadow-2xl flex items-center justify-center group active:scale-95 transition-transform">
+    <button onClick={onAddClick} className="bg-[#79E5CB] text-white w-16 h-16 rounded-full shadow-2xl flex items-center justify-center group active:scale-95 transition-transform">
       <span className="material-symbols-outlined text-3xl group-hover:rotate-90 transition-transform">add</span>
     </button>
   </div>
