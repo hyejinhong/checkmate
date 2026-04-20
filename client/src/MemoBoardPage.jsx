@@ -4,6 +4,7 @@ import axios from 'axios';
 import PinAuthPage from './PinAuthPage';
 import SockJS from 'sockjs-client';
 import Stomp from 'stompjs';
+import ShareModal from './components/ShareModal';
 import { getMyProfile } from './utils/presence';
 import ProfileSetupModal from './components/ProfileSetupModal';
 
@@ -25,12 +26,14 @@ const MemoBoardPage = () => {
     const [showProfileModal, setShowProfileModal] = useState(false);
     const [myProfile, setMyProfile] = useState(null);
 
+    const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || `https://hhjcloud.duckdns.org/ws-checkmate`;
+
     // WebSocket 연결 설정
     useEffect(() => {
         let heartbeatInterval;
 
         if (isAuthenticated && shareKey) {
-            const socket = new SockJS('http://localhost:8080/ws-checkmate');
+            const socket = new SockJS(`${SOCKET_URL}/ws-checkmate`);
             stompClient.current = Stomp.over(socket);
             // stompClient.current.debug = null;
 
@@ -140,7 +143,7 @@ const MemoBoardPage = () => {
     const fetchMemo = async () => {
         setLoading(true);
         try {
-            const response = await axios.get(`http://localhost:8080/api/memos/${shareKey}`);
+            const response = await axios.get(`/api/memos/${shareKey}`);
             if (response.data.success) {
                 const memoData = response.data.data;
                 setMemo(memoData);
@@ -176,7 +179,7 @@ const MemoBoardPage = () => {
     const handleVerifyPin = async (inputPin) => {
         setAuthError(false);
         try {
-            const response = await axios.post(`http://localhost:8080/api/memos/${shareKey}/verify`, { pin: inputPin });
+            const response = await axios.post(`/api/memos/${shareKey}/verify`, { pin: inputPin });
             if (response.data.success) {
                 localStorage.setItem(`auth_${shareKey}`, 'true');
                 setIsAuthenticated(true);
@@ -208,7 +211,7 @@ const MemoBoardPage = () => {
 
         try {
             // 1. 백엔드 API 호출
-            const response = await axios.post(`http://localhost:8080/api/memos/${shareKey}/items`, {
+            const response = await axios.post(`/api/memos/${shareKey}/items`, {
                 content: newItem
             });
 
@@ -232,7 +235,7 @@ const MemoBoardPage = () => {
     // 1. 상태 토글 핸들러
     const handleToggleItem = async (itemId) => {
         try {
-            await axios.patch(`http://localhost:8080/api/memos/${shareKey}/items/${itemId}/toggle`);
+            await axios.patch(`/api/memos/${shareKey}/items/${itemId}/toggle`);
             // 로컬 상태 업데이트
             // setMemo(prev => ({
             //     ...prev,
@@ -249,7 +252,7 @@ const MemoBoardPage = () => {
     const handleDeleteItem = async (itemId) => {
         if (!window.confirm("정말 삭제하시겠습니까?")) return;
         try {
-            await axios.delete(`http://localhost:8080/api/memos/${shareKey}/items/${itemId}`);
+            await axios.delete(`/api/memos/${shareKey}/items/${itemId}`);
             // 로컬 상태에서 제거
             setMemo(prev => ({
                 ...prev,
@@ -270,7 +273,7 @@ const MemoBoardPage = () => {
     const handleUpdateItem = async (itemId) => {
         if (!editingContent.trim()) return;
         try {
-            const response = await axios.put(`http://localhost:8080/api/memos/${shareKey}/items/${itemId}`, {
+            const response = await axios.put(`/api/memos/${shareKey}/items/${itemId}`, {
                 content: editingContent
             });
 
@@ -362,7 +365,15 @@ const MemoBoardPage = () => {
                         >
                             {memo?.title}
                         </h1>
-                        <div className="flex -space-x-2 overflow-hidden ml-auto">
+                        <div className="flex items-center gap-4 ml-auto">
+                            <button 
+                                onClick={() => setIsShareModalOpen(true)}
+                                className="flex items-center gap-2 px-4 py-2 bg-white/50 hover:bg-white/80 dark:bg-slate-800/50 dark:hover:bg-slate-800/80 rounded-full text-sm font-bold text-emerald-800 dark:text-emerald-400 transition-all shadow-sm border border-white/20"
+                            >
+                                <span className="material-symbols-outlined text-lg">share</span>
+                                공유
+                            </button>
+                            <div className="flex -space-x-2 overflow-hidden">
                             {activeUsers.map((user) => (
                                 <div
                                     key={user.userId}
@@ -373,6 +384,7 @@ const MemoBoardPage = () => {
                                     <span className="relative z-20">{user.emoji}</span>
                                 </div>
                             ))}
+                            </div>
                         </div>
                     </div>
 
@@ -444,7 +456,7 @@ const MemoBoardPage = () => {
                     <div ref={inputContainerRef} className="relative z-10 mt-auto">
                         <div className="bg-white/40 backdrop-blur-sm rounded-2xl p-2 flex items-center shadow-inner border border-white/40 overflow-hidden">
                             <input
-                                className="flex-grow bg-transparent border-none focus:ring-0 text-lg px-4 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 font-medium"
+                                className="flex-grow min-w-0 bg-transparent border-none focus:ring-0 text-lg px-4 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 font-medium"
                                 placeholder="여기에 할 일을 추가하세요..."
                                 type="text"
                                 value={newItem}

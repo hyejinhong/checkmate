@@ -17,3 +17,5 @@ server/src/main/resources/application.yaml
 server/src/main/resources/application-*.yaml
 
 node_modules/
+docker-compose.yml
+client/.env

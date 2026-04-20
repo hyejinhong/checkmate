@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Settings from './components/Settings';
 
@@ -6,6 +7,7 @@ const MainPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [recentMemos, setRecentMemos] = useState([]);
+  const navigate = useNavigate();
 
   const formatTimeAgo = (timestamp) => {
     if (!timestamp) return '알 수 없음';
@@ -78,10 +80,12 @@ const MainPage = () => {
               {recentMemos.map((memo, index) => (
                 <MemoCard 
                   key={index} 
+                  shareKey={memo.shareKey}
                   title={memo.title} 
                   updateText={formatTimeAgo(memo.createdAt)} 
                   bgColor={memo.bgColor} 
                   pinColor={memo.pinColor} 
+                  onDelete={(e) => handleDeleteMemo(e, memo.shareKey)}
                 />
               ))}
             </div>
@@ -104,7 +108,7 @@ const MainPage = () => {
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <div className="absolute inset-0" onClick={() => setIsModalOpen(false)} />
-          <CreateBoardSection isModal onClose={() => setIsModalOpen(false)} />
+          <CreateBoardSection isModal onClose={() => setIsModalOpen(false)} navigate={navigate} />
         </div>
       )}
     </div>
@@ -129,14 +133,23 @@ const Header = ({ onSettingsClick }) => (
   </header>
 );
 
-const MemoCard = ({ title, updateText, bgColor, pinColor }) => (
+const MemoCard = ({ shareKey, title, updateText, bgColor, pinColor, onDelete }) => {
+  const navigate = useNavigate();
+  return (
   <div
     style={{ backgroundColor: bgColor }}
-    className="group relative rounded-xl p-8 pt-12 shadow-[0_20px_40px_-12px_rgba(0,105,71,0.1)] transition-all hover:-translate-y-2 hover:shadow-[0_30px_50px_-15px_rgba(0,105,71,0.15)]"
+    onClick={() => navigate(`/memo/${shareKey}`)}
+    className="group relative rounded-xl p-8 pt-12 shadow-[0_20px_40px_-12px_rgba(0,105,71,0.1)] transition-all hover:-translate-y-2 hover:shadow-[0_30px_50px_-15px_rgba(0,105,71,0.15)] cursor-pointer"
   >
     <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2">
       <span className={`material-symbols-outlined ${pinColor} text-4xl drop-shadow-md`} style={{ fontVariationSettings: "'FILL' 1" }}>push_pin</span>
     </div>
+    <button 
+      onClick={onDelete}
+      className="absolute top-4 right-4 z-20 w-8 h-8 flex items-center justify-center rounded-full bg-white/80 text-slate-400 hover:text-red-500 hover:bg-white transition-all shadow-sm"
+    >
+      <span className="material-symbols-outlined text-xl">delete</span>
+    </button>
     <div className="flex flex-col h-full justify-between">
       <div>
         <h3 className="font-headline font-bold text-xl text-slate-800 mb-2">{title}</h3>
@@ -149,9 +162,10 @@ const MemoCard = ({ title, updateText, bgColor, pinColor }) => (
       </div>
     </div>
   </div>
-);
+  );
+};
 
-const CreateBoardSection = ({ isModal, onClose }) => {
+const CreateBoardSection = ({ isModal, onClose, navigate }) => {
   // 1. 입력값 상태 관리
   const [formData, setFormData] = useState({
     title: '',
@@ -159,6 +173,8 @@ const CreateBoardSection = ({ isModal, onClose }) => {
     colorCode: '#79E5CB' // 기본 컬러값
   });
   const [isLoading, setIsLoading] = useState(false);
+  
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
   // 2. 입력값 변경 핸들러
   const handleChange = (e) => {
@@ -175,19 +191,24 @@ const CreateBoardSection = ({ isModal, onClose }) => {
 
     setIsLoading(true);
     try {
-      const response = await axios.post('http://localhost:8080/api/memos', formData);
+      const response = await axios.post(`/api/memos`, formData);
       
       // ApiResponse 규격에 맞춘 성공 처리 (data에 shareKey가 담겨 옴)
       if (response.data.success) {
-        const shareKey = response.data.data;
+        const createdMemo = response.data.data; // 서버에서 생성된 메모 객체 (id, shareKey 등 포함)
+        const shareKey = typeof createdMemo === 'string' ? createdMemo : createdMemo.shareKey;
+        
         alert("메모장이 생성되었습니다!");
+
+        // 생성 직후 바로 인증 상태 저장 (리다이렉트 시 PIN 입력 생략)
+        localStorage.setItem(`auth_${shareKey}`, 'true');
 
         // 로컬 스토리지에 최근 메모 저장
         const newMemo = {
-          title: formData.title,
+          title: formData.title || "제목 없는 메모",
           shareKey: shareKey,
           createdAt: new Date().toISOString(),
-          bgColor: formData.colorCode,
+          bgColor: formData.colorCode || '#E6FFFA',
           pinColor: 'text-emerald-500'
         };
         
@@ -195,7 +216,7 @@ const CreateBoardSection = ({ isModal, onClose }) => {
         const updatedMemos = [newMemo, ...savedMemos.filter(m => m.shareKey !== shareKey)].slice(0, 6);
         localStorage.setItem('recentMemos', JSON.stringify(updatedMemos));
         
-        window.location.href = `/memo/${shareKey}`; 
+        navigate(`/memo/${shareKey}`); 
         
         if (isModal) onClose();
       }

@@ -11,6 +11,13 @@ const PinAuthPage = ({ onVerify, error }) => {
     inputRef.current?.focus();
   };
 
+  // 에러 발생 시 입력된 PIN 초기화
+  useEffect(() => {
+    if (error) {
+      setPin('');
+    }
+  }, [error]);
+
   const handleInputChange = (e) => {
     const value = e.target.value.replace(/[^0-9]/g, ''); // 숫자만 입력
     if (value.length <= 4) {
@@ -83,7 +90,7 @@ const PinAuthPage = ({ onVerify, error }) => {
           {/* The Memo Card */}
           <div className="bg-[#fffdf0] rounded-xl px-10 pt-16 pb-12 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.12)] flex flex-col items-center text-center border border-yellow-100/50">
             <h2 className="font-headline font-extrabold text-3xl text-[#2c2f31] mb-4 tracking-tight">비밀번호 입력</h2>
-            <p className="font-body text-[#595c5e] leading-relaxed mb-10 max-w-[280px]">초대받은 보드에 입장하려면 PIN 4자리를 입력하세요</p>
+            <p className="font-body text-[#595c5e] leading-relaxed mb-10 max-w-[280px]">초대받은 메모에 입장하려면 PIN 4자리를 입력하세요</p>
             
             {/* PIN Input Group (Visual) */}
             <div className="flex gap-4 mb-8">
