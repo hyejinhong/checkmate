@@ -26,7 +26,7 @@ const MemoBoardPage = () => {
     const [showProfileModal, setShowProfileModal] = useState(false);
     const [myProfile, setMyProfile] = useState(null);
 
-    const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || `https://hhjcloud.duckdns.org/ws-checkmate`;
+    const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || `https://hhjcloud.duckdns.org/`;
 
     // WebSocket 연결 설정
     useEffect(() => {
