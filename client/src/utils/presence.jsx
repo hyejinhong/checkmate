@@ -1,4 +1,4 @@
-const FRUITS = [
+export const FRUITS = [
     { name: '사과', emoji: '🍎', color: '#FFB1B1' },
     { name: '바나나', emoji: '🍌', color: '#FDE68A' },
     { name: '포도', emoji: '🍇', color: '#E9D5FF' },
@@ -16,23 +16,23 @@ const FRUITS = [
     { name: '배', emoji: '🍐', color: '#ECFCCB' },
     { name: '아보카도', emoji: '🥑', color: '#D1FAE5' },
     { name: '코코넛', emoji: '🥥', color: '#F3F4F6' },
-    { name: '감', emoji: '🍊', color: '#FFEDD5' },
+    { name: '청사과', emoji: '🍏', color: '#DCFCE7' },
 ];
 
-export const getMyProfile = () => {
-    // 1. 기존에 저장된 프로필이 있는지 확인
-    let profile = JSON.parse(localStorage.getItem('checkmate_user_profile'));
+export const getMyProfile = (shareKey) => {
+    const storageKey = shareKey ? `checkmate_user_profile_${shareKey}` : 'checkmate_user_profile';
+    
+    const profile = JSON.parse(localStorage.getItem(storageKey));
 
     if (!profile) {
-        // 2. 없으면 랜덤 과일 선택 및 UUID 생성
         const randomFruit = FRUITS[Math.floor(Math.random() * FRUITS.length)];
-        profile = {
+        return {
             viewerId: crypto.randomUUID(),
             nickname: randomFruit.name,
             emoji: randomFruit.emoji,
-            color: randomFruit.color
+            color: randomFruit.color,
+            isSet: false // 아직 설정되지 않은 임시 프로필임을 명시
         };
-        localStorage.setItem('checkmate_user_profile', JSON.stringify(profile));
     }
     return profile;
 };
