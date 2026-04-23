@@ -25,6 +25,7 @@ const MemoBoardPage = () => {
     const [activeUsers, setActiveUsers] = useState([]);
     const [showProfileModal, setShowProfileModal] = useState(false);
     const [myProfile, setMyProfile] = useState(null);
+    const [retryCount, setRetryCount] = useState(0); // 재연결 트리거용 상태
 
     const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || `https://hhjcloud.duckdns.org/`;
 
@@ -32,7 +33,7 @@ const MemoBoardPage = () => {
     useEffect(() => {
         let heartbeatInterval;
 
-        if (isAuthenticated && shareKey) {
+        if (isAuthenticated && shareKey && myProfile) {
             const socket = new SockJS(`${SOCKET_URL}/ws-checkmate`);
             stompClient.current = Stomp.over(socket);
             // stompClient.current.debug = null;
@@ -46,6 +47,9 @@ const MemoBoardPage = () => {
                 color: profile?.color
             };
             stompClient.current.connect(connectHeaders, () => {
+                // 연결 성공 시 최신 데이터 동기화
+                fetchMemo();
+
                 stompClient.current.subscribe(`/topic/memo/${shareKey}`, (message) => {
                     const payload = JSON.parse(message.body);
                     const { type, data } = payload;
@@ -116,7 +120,21 @@ const MemoBoardPage = () => {
                 stompClient.current.disconnect();
             }
         };
-    }, [isAuthenticated, shareKey, myProfile]);
+    }, [isAuthenticated, shareKey, myProfile, retryCount]);
+
+    // 브라우저 Visibility API를 이용한 재연결 로직
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                // 화면이 다시 보일 때 소켓이 끊겨있다면 재연결 트리거
+                if (!stompClient.current || !stompClient.current.connected) {
+                    setRetryCount(prev => prev + 1);
+                }
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }, []);
 
 
     // 1. 초기 인증 상태 확인
