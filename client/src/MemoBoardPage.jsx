@@ -391,15 +391,17 @@ const MemoBoardPage = () => {
                                 <span className="material-symbols-outlined text-lg">share</span>
                                 공유
                             </button>
-                            <div className="flex -space-x-2 overflow-hidden">
+                            <div className="flex -space-x-2">
                             {activeUsers.map((user) => (
                                 <div
                                     key={user.userId}
-                                    className="relative flex items-center justify-center h-12 w-12 rounded-full ring-4 ring-white/50 shadow-lg text-2xl transition-transform hover:scale-110 hover:z-10 cursor-default z-0"
+                                    className="group/user relative flex items-center justify-center h-12 w-12 rounded-full ring-4 ring-white/50 shadow-lg text-2xl transition-transform hover:scale-110 hover:z-10 cursor-default z-0"
                                     style={{ backgroundColor: user.color }}
-                                    title={user.nickname}
                                 >
                                     <span className="relative z-20">{user.emoji}</span>
+                                    <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs py-1 px-2 rounded opacity-0 group-hover/user:opacity-100 group-active/user:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-30 shadow-xl">
+                                        {user.nickname}
+                                    </div>
                                 </div>
                             ))}
                             </div>
