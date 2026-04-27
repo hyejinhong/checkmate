@@ -497,7 +497,11 @@ const MemoBoardPage = () => {
 
             {/* BottomNavBar (Mobile Only) */}
             <nav className="md:hidden fixed bottom-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 bg-white/70 dark:bg-slate-800/70 backdrop-blur-2xl rounded-t-[3rem] shadow-[0_-10px_30px_-5px_rgba(121,229,203,0.1)]">
-                <div className="flex flex-col items-center justify-center text-emerald-900 dark:text-emerald-100">
+                <button onClick={() => navigate('/')} className="flex flex-col items-center justify-center text-slate-400">
+                    <span className="material-symbols-outlined">home</span>
+                    <span className="text-xs font-semibold">Home</span>
+                </button>
+                <div className="flex flex-col items-center justify-center text-emerald-600 dark:text-emerald-400">
                     <span className="material-symbols-outlined">dashboard</span>
                     <span className="text-xs font-semibold">Board</span>
                 </div>
