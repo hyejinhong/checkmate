@@ -61,12 +61,24 @@ const MemoBoardPage = () => {
 
                         switch (type) {
                             case 'ITEM_ADDED':
+                                // 새로 추가된 아이템 복호화 처리
+                                const decryptedAddedItem = {
+                                    ...data,
+                                    content: (() => {
+                                        try {
+                                            const decrypted = decryptData(data.content, encryptionKey);
+                                            return decrypted || data.content;
+                                        } catch (e) {
+                                            return data.content;
+                                        }
+                                    })()
+                                };
+                                
                                 return {
                                     ...prev,
-                                    // 이미 리스트에 해당 ID가 있으면 그대로 두고, 없으면 추가함
-                                    items: prev.items.some(item => item.id === data.id)
+                                    items: prev.items.some(item => item.id === decryptedAddedItem.id)
                                         ? prev.items
-                                        : [...prev.items, data]
+                                        : [...prev.items, decryptedAddedItem]
                                 };
                             case 'ITEM_UPDATED':
                             case 'ITEM_TOGGLED':
