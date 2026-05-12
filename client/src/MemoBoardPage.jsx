@@ -7,6 +7,7 @@ import Stomp from 'stompjs';
 import ShareModal from './components/ShareModal';
 import { getMyProfile } from './utils/presence';
 import ProfileSetupModal from './components/ProfileSetupModal';
+import { deriveKey, encryptData, decryptData } from './utils/crypto';
 
 const MemoBoardPage = () => {
     const { shareKey } = useParams();
@@ -16,6 +17,7 @@ const MemoBoardPage = () => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [loading, setLoading] = useState(true);
     const [authError, setAuthError] = useState(false);
+    const [encryptionKey, setEncryptionKey] = useState(null);
     const [newItem, setNewItem] = useState('');
     const [editingItemId, setEditingItemId] = useState(null);
     const [editingContent, setEditingContent] = useState('');
@@ -59,21 +61,43 @@ const MemoBoardPage = () => {
 
                         switch (type) {
                             case 'ITEM_ADDED':
+                                // 새로 추가된 아이템 복호화 처리
+                                const decryptedAddedItem = {
+                                    ...data,
+                                    content: (() => {
+                                        try {
+                                            const decrypted = decryptData(data.content, encryptionKey);
+                                            return decrypted || data.content;
+                                        } catch (e) {
+                                            return data.content;
+                                        }
+                                    })()
+                                };
+                                
                                 return {
                                     ...prev,
-                                    // 이미 리스트에 해당 ID가 있으면 그대로 두고, 없으면 추가함
-                                    items: prev.items.some(item => item.id === data.id)
+                                    items: prev.items.some(item => item.id === decryptedAddedItem.id)
                                         ? prev.items
-                                        : [...prev.items, data]
+                                        : [...prev.items, decryptedAddedItem]
                                 };
                             case 'ITEM_UPDATED':
                             case 'ITEM_TOGGLED':
                                 return {
                                     ...prev,
                                     items: prev.items.map(item =>
-                                        String(item.id) === String(data.id)
-                                            ? { ...item, ...data }
-                                            : item
+                                        String(item.id) === String(data.id) ? {
+                                            ...item,
+                                            ...data,
+                                            content: (() => {
+                                                try {
+                                                    // data.content가 암호화된 상태로 올 경우 복호화 시도
+                                                    const decrypted = decryptData(data.content, encryptionKey);
+                                                    return decrypted || data.content;
+                                                } catch (e) {
+                                                    return data.content;
+                                                }
+                                            })()
+                                        } : item
                                     )
                                 };
                             case 'ITEM_DELETED':
@@ -139,7 +163,7 @@ const MemoBoardPage = () => {
 
     // 1. 초기 인증 상태 확인
     useEffect(() => {
-        const isAuth = localStorage.getItem(`auth_${shareKey}`) === 'true';
+        const isAuth = localStorage.getItem(`auth_${shareKey}`) === 'true' && localStorage.getItem(`encKey_${shareKey}`);
         
         const savedUser = JSON.parse(localStorage.getItem(`checkmate_user_profile_${shareKey}`) || 'null');
         if (!savedUser || !savedUser.isSet) {
@@ -149,7 +173,8 @@ const MemoBoardPage = () => {
         }
 
         if (isAuth) {
-            console.log("isAuth", isAuth);
+            const savedKey = localStorage.getItem(`encKey_${shareKey}`);
+            setEncryptionKey(savedKey);
             setIsAuthenticated(true);
             fetchMemo();
         } else {
@@ -164,7 +189,36 @@ const MemoBoardPage = () => {
             const response = await axios.get(`/api/memos/${shareKey}`);
             if (response.data.success) {
                 const memoData = response.data.data;
-                setMemo(memoData);
+                const savedKey = localStorage.getItem(`encKey_${shareKey}`);
+
+                // 제목 복호화
+                const decryptedTitle = (() => {
+                    try {
+                        const decrypted = decryptData(memoData.title, savedKey);
+                        return (savedKey && decrypted) ? decrypted : memoData.title;
+                    } catch (e) {
+                        console.log(">> 제목 복호화 실패", e);
+                        return memoData.title;
+                    }
+                })();
+
+                // 가져온 아이템들의 내용을 복호화하여 저장
+                const decryptedItems = (memoData.items || []).map(item => ({
+                    ...item,
+                    content: (() => {
+                        try {
+                            const decrypted = decryptData(item.content, savedKey)
+                            console.log(`item.content : ${item.content}`);
+                            console.log(`decrypted : ${decrypted}`);
+                            return (savedKey && decrypted) ? decrypted : item.content;
+                        } catch (e) {
+                            console.log(">> 복호화 실패", e);
+                            return item.content; // 복호화 실패 시 원문 반환
+                        }
+                    })()
+                }));
+
+                setMemo({ ...memoData, title: decryptedTitle, items: decryptedItems });
                 setIsAuthenticated(true);
 
                 // 로컬 스토리지에 최근 메모 정보가 없거나 갱신이 필요한 경우 저장
@@ -172,7 +226,7 @@ const MemoBoardPage = () => {
                 const exists = savedMemos.find(m => m.shareKey === shareKey);
                 if (!exists) {
                     const newMemoEntry = {
-                        title: memoData.title,
+                        title: decryptedTitle,
                         shareKey: shareKey,
                         createdAt: memoData.createdAt || new Date().toISOString(),
                         bgColor: memoData.colorCode,
@@ -199,13 +253,26 @@ const MemoBoardPage = () => {
         try {
             const response = await axios.post(`/api/memos/${shareKey}/verify`, { pin: inputPin });
             if (response.data.success) {
+                const key = deriveKey(inputPin);
+                setEncryptionKey(key);
                 localStorage.setItem(`auth_${shareKey}`, 'true');
+                localStorage.setItem(`encKey_${shareKey}`, key);
                 setIsAuthenticated(true);
 
-                // 최근 메모 목록 업데이트 (MainPage와 동일한 로직)
-                const memoData = response.data.data;
+                // 서버에서 최신 메모 정보를 다시 가져와서 로컬 스토리지 업데이트
+                const memoResponse = await axios.get(`/api/memos/${shareKey}`);
+                const memoData = memoResponse.data.data;
+                
+                const decryptedTitle = (() => {
+                    try {
+                        return decryptData(memoData.title, key) || memoData.title;
+                    } catch (e) {
+                        return memoData.title;
+                    }
+                })();
+
                 const newMemoEntry = {
-                    title: memoData.title,
+                    title: decryptedTitle,
                     shareKey: shareKey,
                     createdAt: memoData.createdAt || new Date().toISOString(),
                     bgColor: memoData.colorCode,
@@ -225,12 +292,15 @@ const MemoBoardPage = () => {
 
     // 4. 할 일 추가
     const handleAddItem = async () => {
+        console.log("현재 암호화 키 상태:", encryptionKey);
         if (!newItem.trim()) return;
 
         try {
+            const encryptedContent = encryptData(newItem, encryptionKey);
+
             // 1. 백엔드 API 호출
             const response = await axios.post(`/api/memos/${shareKey}/items`, {
-                content: newItem
+                content: encryptedContent
             });
 
             if (response.data.success) {
