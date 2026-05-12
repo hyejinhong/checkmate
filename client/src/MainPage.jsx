@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Settings from './components/Settings';
+import { deriveKey, encryptData } from './utils/crypto';
 
 const MainPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -191,7 +192,13 @@ const CreateBoardSection = ({ isModal, onClose, navigate }) => {
 
     setIsLoading(true);
     try {
-      const response = await axios.post(`/api/memos`, formData);
+      const encryptionKey = deriveKey(formData.pin);
+      const encryptedTitle = encryptData(formData.title, encryptionKey);
+
+      const response = await axios.post(`/api/memos`, {
+        ...formData,
+        title: encryptedTitle
+      });
       
       // ApiResponse 규격에 맞춘 성공 처리 (data에 shareKey가 담겨 옴)
       if (response.data.success) {
@@ -202,6 +209,7 @@ const CreateBoardSection = ({ isModal, onClose, navigate }) => {
 
         // 생성 직후 바로 인증 상태 저장 (리다이렉트 시 PIN 입력 생략)
         localStorage.setItem(`auth_${shareKey}`, 'true');
+        localStorage.setItem(`encKey_${shareKey}`, encryptionKey);
 
         // 로컬 스토리지에 최근 메모 저장
         const newMemo = {

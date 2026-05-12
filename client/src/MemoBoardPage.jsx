@@ -189,8 +189,18 @@ const MemoBoardPage = () => {
             const response = await axios.get(`/api/memos/${shareKey}`);
             if (response.data.success) {
                 const memoData = response.data.data;
-                
                 const savedKey = localStorage.getItem(`encKey_${shareKey}`);
+
+                // 제목 복호화
+                const decryptedTitle = (() => {
+                    try {
+                        const decrypted = decryptData(memoData.title, savedKey);
+                        return (savedKey && decrypted) ? decrypted : memoData.title;
+                    } catch (e) {
+                        console.log(">> 제목 복호화 실패", e);
+                        return memoData.title;
+                    }
+                })();
 
                 // 가져온 아이템들의 내용을 복호화하여 저장
                 const decryptedItems = (memoData.items || []).map(item => ({
@@ -208,7 +218,7 @@ const MemoBoardPage = () => {
                     })()
                 }));
 
-                setMemo({ ...memoData, items: decryptedItems });
+                setMemo({ ...memoData, title: decryptedTitle, items: decryptedItems });
                 setIsAuthenticated(true);
 
                 // 로컬 스토리지에 최근 메모 정보가 없거나 갱신이 필요한 경우 저장
@@ -216,7 +226,7 @@ const MemoBoardPage = () => {
                 const exists = savedMemos.find(m => m.shareKey === shareKey);
                 if (!exists) {
                     const newMemoEntry = {
-                        title: memoData.title,
+                        title: decryptedTitle,
                         shareKey: shareKey,
                         createdAt: memoData.createdAt || new Date().toISOString(),
                         bgColor: memoData.colorCode,
@@ -251,8 +261,17 @@ const MemoBoardPage = () => {
 
                 // 최근 메모 목록 업데이트 (MainPage와 동일한 로직)
                 const memoData = response.data.data;
+                const decryptedTitle = (() => {
+                    try {
+                        const decrypted = decryptData(memoData.title, key);
+                        return decrypted || memoData.title;
+                    } catch (e) {
+                        return memoData.title;
+                    }
+                })();
+
                 const newMemoEntry = {
-                    title: memoData.title,
+                    title: decryptedTitle,
                     shareKey: shareKey,
                     createdAt: memoData.createdAt || new Date().toISOString(),
                     bgColor: memoData.colorCode,
