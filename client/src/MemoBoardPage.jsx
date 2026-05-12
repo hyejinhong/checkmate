@@ -85,9 +85,19 @@ const MemoBoardPage = () => {
                                 return {
                                     ...prev,
                                     items: prev.items.map(item =>
-                                        String(item.id) === String(data.id)
-                                            ? { ...item, ...data }
-                                            : item
+                                        String(item.id) === String(data.id) ? {
+                                            ...item,
+                                            ...data,
+                                            content: (() => {
+                                                try {
+                                                    // data.content가 암호화된 상태로 올 경우 복호화 시도
+                                                    const decrypted = decryptData(data.content, encryptionKey);
+                                                    return decrypted || data.content;
+                                                } catch (e) {
+                                                    return data.content;
+                                                }
+                                            })()
+                                        } : item
                                     )
                                 };
                             case 'ITEM_DELETED':
