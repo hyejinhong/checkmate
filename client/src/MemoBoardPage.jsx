@@ -259,12 +259,13 @@ const MemoBoardPage = () => {
                 localStorage.setItem(`encKey_${shareKey}`, key);
                 setIsAuthenticated(true);
 
-                // 최근 메모 목록 업데이트 (MainPage와 동일한 로직)
-                const memoData = response.data.data;
+                // 서버에서 최신 메모 정보를 다시 가져와서 로컬 스토리지 업데이트
+                const memoResponse = await axios.get(`/api/memos/${shareKey}`);
+                const memoData = memoResponse.data.data;
+                
                 const decryptedTitle = (() => {
                     try {
-                        const decrypted = decryptData(memoData.title, key);
-                        return decrypted || memoData.title;
+                        return decryptData(memoData.title, key) || memoData.title;
                     } catch (e) {
                         return memoData.title;
                     }
